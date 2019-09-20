@@ -35,13 +35,15 @@ typedef struct{
 // Functions ------------------------------------------------------------
 void ChangetoDnsNameFormat(unsigned char* dns,unsigned char* host) {
     int lock = 0 , i;
-    strcat((char*)host,".");
+	char * host_aux = (char *)(malloc(sizeof(host)+1));
+	strcpy(host_aux,host);
+    strcat((char*)host_aux,".");
      
-    for(i = 0 ; i < strlen((char*)host) ; i++) {
-        if(host[i]=='.') {
+    for(i = 0 ; i < strlen((char*)host_aux) ; i++) {
+        if(host_aux[i]=='.') {
             *dns++ = i-lock;
             for(;lock<i;lock++) {
-                *dns++=host[lock];
+                *dns++=host_aux[lock];
             }
             lock++; //or lock=i+1;
         }
@@ -75,8 +77,6 @@ int main(int argc, char **argv){
 	// Sets Data Information Values --------------------------------------------------
 	char * data = (buffer + sizeof(udp_header));					// Pointer to the beggining of payload
 	ChangetoDnsNameFormat(data, message);							// Formats message to UDP pattern 3ww6google3com
-	printf("\n%d\n", strlen(data));
-	// strcpy(data,message);
 	unsigned int len = strlen(data)+1;								// Length of message
 	infos * end = (infos *)(buffer+ sizeof(udp_header) + len);
 	end->type = htons(1);
