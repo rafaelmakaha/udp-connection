@@ -24,7 +24,6 @@ typedef struct{
 	uint16_t ans_RR;
 	uint16_t auth_RR;
 	uint16_t add_RR;
-	uint16_t query;
 }udp_header;
 
 typedef struct{
@@ -68,11 +67,10 @@ int main(int argc, char **argv){
 	// Sets udp_header Values ---------------------------------------------------------
 	datagram->query_id = htons(rand());
 	datagram->flags = htons(0x0100);
-	datagram->question_count = htons(0x0001);
+	datagram->question_count = htons(1);
 	datagram->ans_RR = htons(0);
 	datagram->auth_RR = htons(0);
 	datagram->add_RR = htons(0);
-	datagram->query = htons(0x0001);
 	
 	// Sets Data Information Values --------------------------------------------------
 	char * data = (buffer + sizeof(udp_header));					// Pointer to the beggining of payload
