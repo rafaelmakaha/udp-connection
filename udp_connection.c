@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h> 
 #include <string.h> 
-#include <time.h>
+#include <sys/time.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/types.h> 
@@ -13,7 +13,8 @@
 
 // Defines -----------------------------------------------------------------------
 #define PORT 53
-#define MAX 8192
+#define MAX 65536
+#define NTP_TIMESTAMP_DELTA 2208988800ull
 
 // Structs -----------------------------------------------------------------------
 typedef struct{
@@ -31,14 +32,32 @@ typedef struct{
 	uint16_t class;
 }infos;
 
+// Functions ------------------------------------------------------------
+void ChangetoDnsNameFormat(unsigned char* dns,unsigned char* host) {
+    int lock = 0 , i;
+    strcat((char*)host,".");
+     
+    for(i = 0 ; i < strlen((char*)host) ; i++) {
+        if(host[i]=='.') {
+            *dns++ = i-lock;
+            for(;lock<i;lock++) {
+                *dns++=host[lock];
+            }
+            lock++; //or lock=i+1;
+        }
+    }
+    *dns++='\0';
+}
+
 // Main ---------------------------------------------------------------------------
 int main(int argc, char **argv){
 	// Variables ------------------------------------------------------------------
-	char* message = argv[1];							// Package's message
-	char* server_address = argv[2];						// DNS server address
+	unsigned char* message = argv[1];					// Package's message
+	unsigned char* server_address = argv[2];			// DNS server address
 	int socket_fd; 										// Socket File Description
 	struct sockaddr_in target;							// Socket Target Information
 	char buffer[MAX];									// Buffer to Hold package
+	struct timeval timeout={6,0}; 						//Valor do timeout em {segundos, microssegundos}
 	
 	memset(buffer, 0, MAX);
 	// Pointers on the Buffer -------------------------------------------------------
@@ -52,29 +71,19 @@ int main(int argc, char **argv){
 	datagram->auth_RR = htons(0);
 	datagram->add_RR = htons(0);
 	datagram->query = htons(0x0001);
-
-	// Transforms Message Format (unused: input from terminal already on the format for testing) ------------------
-	// char * message_formatted = (char *) (malloc(sizeof(strlen(message) + 1)));
-	// int count = 0;
-	// for(int i=0; i < strlen(message); i++){
-	// 	if(message[i] == '.'){
-	// 		message_formatted[i-count] = count;
-	// 	}
-	// 	message_formatted[i+1] = message[i];
-	// 	count++;
-	// 	printf("%d %s\n", count, message_formatted);
-	// }
-
+	
 	// Sets Data Information Values --------------------------------------------------
-	char * data = (buffer + sizeof(udp_header));					// Pointer do the beggining of payload
-	strcpy(data, message);											// Copy message to payload
+	char * data = (buffer + sizeof(udp_header));					// Pointer to the beggining of payload
+	ChangetoDnsNameFormat(data, message);							// Formats message to UDP pattern 3ww6google3com
+	printf("\n%d\n", strlen(data));
+	// strcpy(data,message);
 	unsigned int len = strlen(data)+1;								// Length of message
-	infos * end = (infos *)(buffer + sizeof(udp_header) + len);
-	end->type = htons(0x0001);
-	end->class = htons(0x0001);
+	infos * end = (infos *)(buffer+ sizeof(udp_header) + len);
+	end->type = htons(1);
+	end->class = htons(1);
 
 	// Creates Socket  ------------------------------------------------------------
-	if((socket_fd = socket(AF_INET, SOCK_DGRAM, 0))<0){
+	if((socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))<0){
 		printf("Error trying to create socket\n");
 		return 0;
 	}
@@ -84,7 +93,8 @@ int main(int argc, char **argv){
 	target.sin_port = htons(PORT);
 	target.sin_addr.s_addr = inet_addr(server_address);
 	// setsockopt(socket_fd, SOL_SOCKET ,SO_RCVTIMEO, NULL, 0 );		// Changes Socket options (don't know if it is necessary)
-	
+    setsockopt(socket_fd, SOL_SOCKET ,SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval) );
+
 	// Checks Buffer Length --------------------------------------------------------
 	const int packege_length = sizeof(udp_header) + len + sizeof(infos);
 
@@ -92,9 +102,9 @@ int main(int argc, char **argv){
 	int n,s;													// Variables to hold sento() and recvfrom() returns
 	int count = 0;
 	socklen_t server_addr_len;									// Length of response
-	do{
+	// do{														// Timeout structure is not working
 		count++;
-		printf("count: %d\n", count);
+		// printf("count: %d\n", count);
 		s = sendto(socket_fd, buffer,
 			packege_length, 0, (struct sockaddr *) &target,
 			sizeof(target));
@@ -104,7 +114,7 @@ int main(int argc, char **argv){
 			&server_addr_len);
 		printf("recvfrom(): %d, %s\n",n, strerror(errno));		
 		sleep(2);												// Waits 2 seconds
-	}while(n < 0 || count < 3);
+	// }while(n < 0 || count < 3);
 
 
 	close(socket_fd);
