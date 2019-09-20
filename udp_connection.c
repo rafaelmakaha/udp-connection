@@ -52,7 +52,7 @@ int main(int argc, char **argv){
 	datagram->add_RR = htons(0);
 	datagram->query = htons(0x0001);
 
-	// Transforms Message Format ----------------------------------------------------
+	// Transforms Message Format (unused: input from terminal already on the format for testing) ------------------
 	// char * message_formatted = (char *) (malloc(sizeof(strlen(message) + 1)));
 	// int count = 0;
 	// for(int i=0; i < strlen(message); i++){
@@ -65,10 +65,10 @@ int main(int argc, char **argv){
 	// }
 
 	// Sets Data Information Values --------------------------------------------------
-	char * data = (buffer + sizeof(udp_header));			// Pointer do the beggining of payload
-	strcpy(data, message);									// Copy message to payload
-	int len = strlen(data)+1;								// Length of message
-	infos * end = (infos *) (data+len);
+	char * data = (buffer + sizeof(udp_header));					// Pointer do the beggining of payload
+	strcpy(data, message);											// Copy message to payload
+	unsigned int len = strlen(data)+1;								// Length of message
+	infos * end = (infos *)(buffer + sizeof(udp_header) + len);
 	end->type = htons(0x0001);
 	end->class = htons(0x0001);
 
@@ -82,16 +82,30 @@ int main(int argc, char **argv){
 	target.sin_family = AF_INET;
 	target.sin_port = htons(PORT);
 	target.sin_addr.s_addr = inet_addr(server_address);
-
+	// setsockopt(socket_fd, SOL_SOCKET ,SO_RCVTIMEO, NULL, 0 );		// Changes Socket options (don't know if it is necessary)
+	
 	// Checks Buffer Length --------------------------------------------------------
-	const int packege_length = sizeof(udp_header) + len +sizeof(infos);
+	const int packege_length = sizeof(udp_header) + len + sizeof(infos);
 
-	// Sends Package ---------------------------------------------------------------
-	int x = sendto(socket_fd, buffer,
-		packege_length, 0, (struct sockaddr *) &target,
-		sizeof(target));
+	// Sends Package and receives Response --------------------------------------------------------
+	int n,s;								// Variables to hold sento() and recvfrom() returns
+	int count = 0;
+	socklen_t server_addr_len;					// Length of response
+	do{
+		count++;
+		s = sendto(socket_fd, buffer,
+			packege_length, 0, (struct sockaddr *) &target,
+			sizeof(target));
+		printf("sendto(): %d, %s\n",s, strerror(errno));
+		n = recvfrom(socket_fd, buffer,
+			packege_length, 0, (struct sockaddr *) &target,
+			&server_addr_len);
+		printf("recvfrom(): %d, %s\n",n, strerror(errno));		
+		sleep(2000);						// Waits 2 seconds to check response (not working: it waits for ever)
+	}while(n < 0 || count < 3);
+
 
 	close(socket_fd);
-	printf("%d %s\n",x, strerror(errno));
+	// printf("%d %s\n",s, strerror(errno));
 	return 0;
 }
