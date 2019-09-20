@@ -1,3 +1,9 @@
+/* DNS Client Project
+Rafael Makaha Gomes Ferreira
+
+Alot of work here. Most of the project is commented
+for future studies and reviews.
+*/
 // Includes ---------------------------------------------------------------------
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,11 +37,6 @@ typedef struct{
 	uint16_t class;
 }infos;
 
-// typedef struct{
-// 	uint16_t data_len;
-// 	uint32_t addr;
-// }Response_data;
-
 // Functions ------------------------------------------------------------
 void ChangetoDnsNameFormat(unsigned char* dns,unsigned char* host) {
     int lock = 0 , i;
@@ -63,7 +64,7 @@ int main(int argc, char **argv){
 	int socket_fd; 										// Socket File Description
 	struct sockaddr_in target;							// Socket Target Information
 	// struct sockaddr_in response;						// Struct to capture the response from socket
-	char buffer[MAX];									// Buffer to Hold package
+	unsigned char buffer[MAX];									// Buffer to Hold package
 	struct timeval timeout={6,0}; 						// Timeout value in seconds {seconds, microseconds}
 	// Response_data *response;
 	
@@ -105,27 +106,26 @@ int main(int argc, char **argv){
 
 	// Sends Package and receives Response --------------------------------------------------------
 	int n,s;													// Variables to hold sento() and recvfrom() returns
-	int count = 0;
+	int i;
 	int server_addr_len;										// Length of response
-	// do{														// Timeout structure is not working
-		count++;
+	for(i =0 ; i < 3 ; i++){
 		s = sendto(socket_fd, buffer,
 			packege_length, 0, (struct sockaddr *) &target,
 			sizeof(target));
-		printf("sendto(): %d, %s\n",s, strerror(errno));
 		n = recvfrom(socket_fd, (char*) buffer,
 			MAX, 0, (struct sockaddr *) &target,
-			&server_addr_len);
-		printf("recvfrom(): %d, %s\n",n, strerror(errno));		
-		// sleep(2);												// Waits 2 seconds
-	// }while(n < 0 || count < 3);
-
-	printf("%s <> ", message);
-	printf("%d.", buffer[n-4]);
-	printf("%d.", buffer[n-3]);
-	printf("%d.", buffer[n-2]);
-	printf("%d\n", buffer[n-1]);
-
+			&server_addr_len);	
+		sleep(2);												// Waits 2 seconds
+		if(n > 0) break;
+	}
+	if (i == 3){
+		printf("Não foi possível resovle %s\n", message);
+		return 0;
+	}else if(buffer[3]%4){										// Verify error on response
+		printf("Host %s não encontrado\n", message);
+	}else{	
+		printf("%s <> %d.%d.%d.%d\n", message, buffer[n-4],buffer[n-3],buffer[n-2],buffer[n-1]);
+	}
 	close(socket_fd);
 	return 0;
 }
