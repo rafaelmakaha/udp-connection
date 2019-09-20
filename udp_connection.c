@@ -12,9 +12,9 @@
 #include <netinet/in.h> 
 
 // Defines -----------------------------------------------------------------------
-#define PORT 53
-#define MAX 65536
-#define NTP_TIMESTAMP_DELTA 2208988800ull
+#define PORT 53										// DNS port
+#define MAX 65536									// Max value to buffer
+#define NTP_TIMESTAMP_DELTA 2208988800ull			// Value to time struct	
 
 // Structs -----------------------------------------------------------------------
 typedef struct{
@@ -34,7 +34,7 @@ typedef struct{
 // Functions ------------------------------------------------------------
 void ChangetoDnsNameFormat(unsigned char* dns,unsigned char* host) {
     int lock = 0 , i;
-	char * host_aux = (char *)(malloc(sizeof(host)+1));
+	char * host_aux = (char *)(malloc(sizeof(host)+1));		// Aux variable to avoid seg fault
 	strcpy(host_aux,host);
     strcat((char*)host_aux,".");
      
@@ -57,17 +57,20 @@ int main(int argc, char **argv){
 	unsigned char* server_address = argv[2];			// DNS server address
 	int socket_fd; 										// Socket File Description
 	struct sockaddr_in target;							// Socket Target Information
+	// struct sockaddr_in response;						// Struct to capture the response from socket
 	char buffer[MAX];									// Buffer to Hold package
-	struct timeval timeout={6,0}; 						//Valor do timeout em {segundos, microssegundos}
+	struct timeval timeout={6,0}; 						// Timeout value in seconds {seconds, microseconds}
+	Response_values response;
 	
 	memset(buffer, 0, MAX);
+
 	// Pointers on the Buffer -------------------------------------------------------
 	udp_header *datagram = (udp_header *) buffer;
 
 	// Sets udp_header Values ---------------------------------------------------------
-	datagram->query_id = htons(rand());
-	datagram->flags = htons(0x0100);
-	datagram->question_count = htons(1);
+	datagram->query_id = htons(rand());					// Random query ID
+	datagram->flags = htons(0x0100);					// Sets FLAGS
+	datagram->question_count = htons(1);				// Number of queries
 	datagram->ans_RR = htons(0);
 	datagram->auth_RR = htons(0);
 	datagram->add_RR = htons(0);
@@ -76,9 +79,9 @@ int main(int argc, char **argv){
 	char * data = (buffer + sizeof(udp_header));					// Pointer to the beggining of payload
 	ChangetoDnsNameFormat(data, message);							// Formats message to UDP pattern 3ww6google3com
 	unsigned int len = strlen(data)+1;								// Length of message
-	infos * end = (infos *)(buffer+ sizeof(udp_header) + len);
-	end->type = htons(1);
-	end->class = htons(1);
+	infos * end = (infos *)(buffer+ sizeof(udp_header) + len);		// Infos points to the end of the message
+	end->type = htons(1);											// Type A
+	end->class = htons(1);											// Class IN
 
 	// Creates Socket  ------------------------------------------------------------
 	if((socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))<0){
@@ -87,11 +90,10 @@ int main(int argc, char **argv){
 	}
 
 	// Configures Socket ----------------------------------------------------------
-	target.sin_family = AF_INET;
-	target.sin_port = htons(PORT);
-	target.sin_addr.s_addr = inet_addr(server_address);
-	// setsockopt(socket_fd, SOL_SOCKET ,SO_RCVTIMEO, NULL, 0 );		// Changes Socket options (don't know if it is necessary)
-    setsockopt(socket_fd, SOL_SOCKET ,SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval) );
+	target.sin_family = AF_INET;																	// Sets IPv4 conection
+	target.sin_port = htons(PORT);																	// Sets PORT
+	target.sin_addr.s_addr = inet_addr(server_address);												// Sets destination address
+    setsockopt(socket_fd, SOL_SOCKET ,SO_RCVTIMEO, (char*)&timeout, sizeof(struct timeval) );		// Sets Timeout
 
 	// Checks Buffer Length --------------------------------------------------------
 	const int packege_length = sizeof(udp_header) + len + sizeof(infos);
@@ -102,7 +104,6 @@ int main(int argc, char **argv){
 	socklen_t server_addr_len;									// Length of response
 	// do{														// Timeout structure is not working
 		count++;
-		// printf("count: %d\n", count);
 		s = sendto(socket_fd, buffer,
 			packege_length, 0, (struct sockaddr *) &target,
 			sizeof(target));
@@ -111,11 +112,10 @@ int main(int argc, char **argv){
 			packege_length, 0, (struct sockaddr *) &target,
 			&server_addr_len);
 		printf("recvfrom(): %d, %s\n",n, strerror(errno));		
-		sleep(2);												// Waits 2 seconds
+		// sleep(2);												// Waits 2 seconds
 	// }while(n < 0 || count < 3);
 
-
 	close(socket_fd);
-	// printf("%d %s\n",s, strerror(errno));
+	printf("%d %s\n",s, strerror(errno));
 	return 0;
 }
