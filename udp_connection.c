@@ -5,6 +5,7 @@
 #include <string.h> 
 #include <time.h>
 #include <errno.h>
+#include <unistd.h>
 #include <sys/types.h> 
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
@@ -88,11 +89,12 @@ int main(int argc, char **argv){
 	const int packege_length = sizeof(udp_header) + len + sizeof(infos);
 
 	// Sends Package and receives Response --------------------------------------------------------
-	int n,s;								// Variables to hold sento() and recvfrom() returns
+	int n,s;													// Variables to hold sento() and recvfrom() returns
 	int count = 0;
-	socklen_t server_addr_len;					// Length of response
+	socklen_t server_addr_len;									// Length of response
 	do{
 		count++;
+		printf("count: %d\n", count);
 		s = sendto(socket_fd, buffer,
 			packege_length, 0, (struct sockaddr *) &target,
 			sizeof(target));
@@ -101,7 +103,7 @@ int main(int argc, char **argv){
 			packege_length, 0, (struct sockaddr *) &target,
 			&server_addr_len);
 		printf("recvfrom(): %d, %s\n",n, strerror(errno));		
-		sleep(2000);						// Waits 2 seconds to check response (not working: it waits for ever)
+		sleep(2);												// Waits 2 seconds
 	}while(n < 0 || count < 3);
 
 
