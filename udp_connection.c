@@ -63,10 +63,8 @@ int main(int argc, char **argv){
 	unsigned char* server_address = argv[2];			// DNS server address
 	int socket_fd; 										// Socket File Description
 	struct sockaddr_in target;							// Socket Target Information
-	// struct sockaddr_in response;						// Struct to capture the response from socket
 	unsigned char buffer[MAX];									// Buffer to Hold package
 	struct timeval timeout={6,0}; 						// Timeout value in seconds {seconds, microseconds}
-	// Response_data *response;
 	
 	memset(buffer, 0, MAX);
 
