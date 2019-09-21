@@ -4,6 +4,8 @@
 
 ## Professor Tiago Alves
 
+## Aluno Rafael Makaha Gomes Ferreira - 160142369
+
 ## Camada de Aplicação: Cliente DNS
 
 ### Observações
